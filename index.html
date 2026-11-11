@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ff4d5a">
+<title>포켓몬 퀴즈 탐험대</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <button id="soundBtn" class="sound-btn" aria-label="소리 켜기/끄기">🔊</button>
+  <div id="flash"></div>
+
+  <!-- 타이틀 -->
+  <section id="scr-title" class="screen active">
+    <div class="title-float" id="titleFloat"></div>
+    <div class="title-wrap">
+      <div class="logo">
+        <div class="logo-ball"></div>
+        <h1>포켓몬<br>퀴즈 탐험대</h1>
+        <p class="sub">문제를 맞히고 포켓몬을 모아 봐!</p>
+      </div>
+      <div class="title-btns">
+        <button class="btn big primary" id="btnStart">▶ 시작하기</button>
+        <button class="btn" id="btnDex">📖 도감 <span class="pill" id="dexCount"></span></button>
+        <button class="btn" id="btnStamps">💮 출석 도장 <span class="pill" id="stampCount"></span></button>
+        <div class="title-links">
+          <button class="link" id="btnFull" hidden>⛶ 전체 화면</button>
+          <button class="link" id="btnParent">⚙️ 어른용 설정</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 지역 고르기 -->
+  <section id="scr-region" class="screen">
+    <div class="topbar">
+      <button class="btn small" data-go="title">◀ 처음</button>
+      <h2>어디로 탐험할까?</h2>
+    </div>
+    <div class="regions" id="regionList"></div>
+  </section>
+
+  <!-- 필드 -->
+  <section id="scr-field" class="screen">
+    <div id="field">
+      <div id="deco"></div>
+      <div id="tapMark"></div>
+      <div id="balls"></div>
+      <div id="player"></div>
+    </div>
+    <div class="hud">
+      <button class="btn small" id="btnFieldBack">◀ 지역</button>
+      <div class="hud-title" id="fieldTitle"></div>
+      <button class="btn small" id="btnFieldDex">📖 도감</button>
+    </div>
+    <div class="hint" id="fieldHint">가고 싶은 곳을 눌러 봐!<br>몬스터볼에 닿으면 배틀 시작!</div>
+  </section>
+
+  <!-- 배틀 -->
+  <section id="scr-battle" class="screen">
+    <div class="battle-top">
+      <button class="btn small" id="btnRun">🏃 나가기</button>
+      <div class="hearts" id="hearts"></div>
+      <div class="progress" id="progress"></div>
+    </div>
+    <div class="battle-main">
+      <div class="stage">
+        <div class="mon-wrap" id="monWrap">
+          <div class="mon-shadow"></div>
+          <img id="monImg" class="mon" alt="">
+          <div id="throwBall" class="throw-ball"></div>
+          <div id="burst" class="burst"></div>
+        </div>
+        <div class="mon-info" id="monInfo"></div>
+      </div>
+      <div class="panel">
+        <div class="bubble" id="bubble">
+          <div class="q-cat" id="qCat"></div>
+          <div class="q-text" id="qText"></div>
+          <div class="q-e" id="qE"></div>
+        </div>
+        <div class="choices" id="choices"></div>
+        <div class="actions" id="actions"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 도감 -->
+  <section id="scr-dex" class="screen">
+    <div class="topbar">
+      <button class="btn small" id="btnDexBack">◀ 뒤로</button>
+      <h2>📖 포켓몬 도감 <span class="pill" id="dexCount2"></span></h2>
+      <div class="tabs">
+        <button class="tab on" data-filter="all">전체</button>
+        <button class="tab" data-filter="caught">잡은 포켓몬</button>
+      </div>
+    </div>
+    <div class="dex-grid" id="dexGrid"></div>
+  </section>
+
+  <!-- 창 -->
+  <div id="modal" class="modal">
+    <div class="modal-box">
+      <button class="modal-x" id="modalX" aria-label="닫기">✕</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/pokemon-data.js"></script>
+<script src="js/questions.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/save.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
