@@ -467,12 +467,13 @@
 
     function askWho() {
       B.phase = 'who';
-      setBubble('누구일까?', '실루엣을 잘 봐!', '');
+      setBubble('누구일까?', '잘 보고 골라 봐!', '');
       setChoices(B.nameChoices, B.mon.name);
     }
     function reveal() {
       B.phase = 'reveal';
       img.classList.remove('sil', 'appear');
+      img.classList.add('faded'); // 잡을 때까지 70%
       var mon = B.mon;
       $('monInfo').innerHTML = '<div class="nm">' + esc(mon.name) + (SAVE.isCaught(mon.id) ? '' : ' <span class="new">NEW</span>') + '</div><div class="types">' + typeBadges(mon.types) + '</div>';
       setBubble('정답! 나는 ' + mon.name + '!', '', '');
