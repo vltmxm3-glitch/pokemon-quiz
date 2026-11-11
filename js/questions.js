@@ -313,35 +313,35 @@
   // =====================================================================
   // 덧셈·뺄셈 (코드로 만들기)
   // =====================================================================
+  var MATH_MAX = 10; // 덧셈·뺄셈에 나오는 가장 큰 수
   function makeMath(r) {
     r = r || Math.random;
     function ri(a, b) { return a + Math.floor(r() * (b - a + 1)); }
-    var kinds = ['pic','pic','add10','add10','sub10','sub10','add20','sub20','missing','tens','add2d','sub2d'];
+    // 5살 수준: 나오는 수(문제 속 수, 정답, 보기)는 모두 1~10 (MATH_MAX)
+    var kinds = ['pic','pic','pic','picSub','picSub','add10','add10','sub10','sub10','missing'];
     var kind = kinds[Math.floor(r() * kinds.length)];
     var a, b, ans, e, q = '얼마일까?', op = '+', expr;
     var ICON = ['🍎','⭐','🎈','🐟','🍓','🌸','🍪'][ri(0, 6)];
+    var icons = function (n) { return new Array(n + 1).join(ICON); };
     switch (kind) {
       case 'pic': a = ri(1, 5); b = ri(1, 5); ans = a + b;
-        e = new Array(a + 1).join(ICON) + ' ➕ ' + new Array(b + 1).join(ICON); q = '모두 몇 개일까?'; expr = a + '+' + b; break;
-      case 'add10': a = ri(1, 9); b = ri(1, 10 - a); ans = a + b; break;
-      case 'sub10': a = ri(2, 10); b = ri(1, a - 1); ans = a - b; op = '-'; break;
-      case 'add20': a = ri(6, 15); b = ri(3, 20 - a); ans = a + b; break;
-      case 'sub20': a = ri(11, 20); b = ri(2, 9); ans = a - b; op = '-'; break;
-      case 'missing': a = ri(1, 9); ans = ri(1, 10 - a); b = a + ans;
+        e = icons(a) + ' ➕ ' + icons(b); q = '모두 몇 개일까?'; break;
+      case 'picSub': a = ri(2, 8); b = ri(1, a - 1); ans = a - b; op = '-';
+        e = icons(a); q = a + '개에서 ' + b + '개를 빼면 몇 개 남을까?'; break;
+      case 'add10': a = ri(1, 9); b = ri(1, MATH_MAX - a); ans = a + b; break;
+      case 'sub10': a = ri(2, MATH_MAX); b = ri(1, a - 1); ans = a - b; op = '-'; break;
+      case 'missing': a = ri(1, 8); ans = ri(1, MATH_MAX - a); b = a + ans;
         e = a + ' + ❓ = ' + b; q = '❓에 들어갈 수는?'; expr = b + '-' + a; break;
-      case 'tens': a = ri(1, 8) * 10; if (r() < 0.5) { b = ri(1, (100 - a) / 10) * 10; ans = a + b; } else { a += 10; b = ri(1, a / 10 - 1) * 10; ans = a - b; op = '-'; } break;
-      case 'add2d': a = ri(10, 89); b = ri(1, Math.min(9, 99 - a)); ans = a + b; break;
-      case 'sub2d': a = ri(20, 99); b = ri(1, 9); ans = a - b; op = '-'; break;
     }
     if (!e) e = a + (op === '+' ? ' + ' : ' - ') + b + ' = ❓';
     if (!expr) expr = a + op + b;
-    var cand = [ans + 1, ans - 1, ans + 2, ans - 2, ans + 10, ans - 10, ans + 3, ans - 3];
-    var w = pickN(cand, 3, r, function (x) { return x >= 0 && x <= 110 && x !== ans; });
+    var cand = [ans + 1, ans - 1, ans + 2, ans - 2, ans + 3, ans - 3];
+    var w = pickN(cand, 3, r, function (x) { return x >= 1 && x <= MATH_MAX && x !== ans; });
     return { cat: 'math', t: kind, q: q, e: e, a: String(ans), w: w.map(String), chk: { k: 'math', expr: expr } };
   }
   // 은행에도 미리 만들어 둠 (검사·개수 확인용). 게임 중에는 makeMath 로 매번 새로 만듭니다.
   (function () { var r = rng(404); for (var i = 0; i < 120; i++) Q.math.push(makeMath(r)); })();
 
-  window.QUIZ = { bank: Q, vocab: VOCAB, makeMath: makeMath, hangul: HANGUL,
+  window.QUIZ = { bank: Q, vocab: VOCAB, makeMath: makeMath, hangul: HANGUL, mathMax: MATH_MAX,
     labels: { math: '🔢 덧셈·뺄셈', korean: '가 한글', english: '🔤 영어', creative: '💡 창의력' } };
 })();
