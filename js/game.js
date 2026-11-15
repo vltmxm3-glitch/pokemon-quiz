@@ -515,7 +515,7 @@
       bPad = TRACE.createPad($('btPad'), {
         onProgress: function (r) { var m = $('btMeter'); if (m) { m.style.width = (r * 100) + '%'; m.classList.toggle('full', r >= 1); } },
         onOut: function () { SFX.play('wrong'); $('qCat').textContent = '선 밖으로 나갔어! 다시 써 봐!'; },
-        onHint: function (c) { $('qCat').textContent = c >= 0.5 ? '조금만 더 채워 봐!' : '회색 글자를 끝까지 따라가 봐!'; },
+        onHint: function (c) { $('qCat').textContent = c >= 0.5 ? '노랗게 반짝이는 곳을 마저 칠해 봐!' : '회색 글자를 끝까지 따라가 봐!'; },
         onSuccess: function () {
           if (B !== my) return;
           SFX.play('correct');
@@ -669,7 +669,7 @@
       pad = TRACE.createPad($('trPad'), {
         onProgress: setMeter,
         onOut: function () { SFX.play('wrong'); $('trHint').textContent = '선 밖으로 많이 나갔어. 다시 써 볼까?'; },
-        onHint: function (c) { $('trHint').textContent = c >= 0.5 ? '잘하고 있어! 조금만 더 채워 봐!' : '좋아, 회색 글자를 끝까지 따라가 봐!'; },
+        onHint: function (c) { $('trHint').textContent = c >= 0.5 ? '잘하고 있어! 노랗게 반짝이는 곳을 마저 칠해 봐!' : '좋아, 회색 글자를 끝까지 따라가 봐!'; },
         onSuccess: function () {
           solved = true;
           SAVE.markTrace(stage.id, idx);
@@ -706,6 +706,7 @@
         var s = ST.filter(function (x) { return done(x).length < x.items.length; })[0] || stage;
         requestAnimationFrame(function () { pickStage(s); });
       },
+      pad: function () { return pad; },
       leave: function () { try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {} },
       doneCount: function () { return ST.reduce(function (n, s) { return n + done(s).length; }, 0); },
       total: function () { return ST.reduce(function (n, s) { return n + s.items.length; }, 0); }
@@ -756,5 +757,5 @@
   if (SAVE.stampToday()) { renderTitle(); setTimeout(function () { SFX.play('stamp'); showStamps(true); }, 400); }
 
   // 시험용 손잡이 (.test 의 자동 시험에서 씀)
-  window.PQ = { show: show, battle: Battle, field: Field, save: SAVE, cfg: CFG, regions: REGIONS, current: function () { return current; } };
+  window.PQ = { show: show, battle: Battle, practice: Practice, field: Field, save: SAVE, cfg: CFG, regions: REGIONS, current: function () { return current; } };
 })();
