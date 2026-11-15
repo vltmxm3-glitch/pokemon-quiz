@@ -2,9 +2,9 @@
 (function () {
   'use strict';
   var KEY = 'pokemonQuiz.save.v1';
-  var AREAS = ['math', 'korean', 'write', 'english', 'creative'];
+  var AREAS = ['math', 'korean', 'write', 'english'];
   function blank() {
-    return { caught: {}, stamps: [], settings: { sound: true, areas: { math: true, korean: true, write: true, english: true, creative: true } }, stats: { battles: 0, sinceGold: 0 }, trace: {} };
+    return { caught: {}, stamps: [], settings: { sound: true, areas: { math: true, korean: true, write: true, english: true } }, stats: { battles: 0, sinceGold: 0 }, trace: {} };
   }
   function load() {
     var d = null;

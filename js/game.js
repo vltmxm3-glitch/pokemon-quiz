@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var POKEMON = window.POKEMON, QUIZ = window.QUIZ, SAVE = window.SAVE, SFX = window.SFX, TRACE = window.TRACE;
-  var AREA_KEYS = ['math', 'korean', 'write', 'english', 'creative'];
+  var AREA_KEYS = ['math', 'korean', 'write', 'english'];
   var $ = function (id) { return document.getElementById(id); };
   var ART = function (id) { return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/' + id + '.png'; };
   var BY_ID = {}; POKEMON.forEach(function (p) { BY_ID[p.id] = p; });
@@ -10,7 +10,7 @@
   // ---------- 설정 값 ----------
   var CFG = {
     hearts: 3,
-    normalQuestions: 2,
+    normalQuestions: 3,     // 포켓몬을 잡으려면 맞혀야 하는 문제 수
     goldQuestions: 4,
     ballsOnField: 3,
     goldChance: 0.15,       // 볼이 새로 나올 때 금색일 확률
@@ -513,7 +513,7 @@
       $('scr-battle').classList.add('tracing');
       var my = B;
       bPad = TRACE.createPad($('btPad'), {
-        mascot: ART(25), // 피카츄가 쓰는 순서 시범
+        mascot: ART(133), mascotName: '이브이', // 이브이가 쓰는 순서 시범
         onProgress: function (r) { var m = $('btMeter'); if (m) { m.style.width = (r * 100) + '%'; m.classList.toggle('full', r >= 1); } },
         onWrong: function () { SFX.play('wrong'); },
         onStrokeDone: function () { SFX.play('tap'); },
@@ -670,7 +670,7 @@
     function ensurePad() {
       if (pad) return;
       pad = TRACE.createPad($('trPad'), {
-        mascot: ART(25), // 피카츄가 쓰는 순서 시범
+        mascot: ART(133), mascotName: '이브이', // 이브이가 쓰는 순서 시범
         onProgress: setMeter,
         onWrong: function () { SFX.play('wrong'); },
         onStrokeDone: function () { SFX.play('tap'); },
