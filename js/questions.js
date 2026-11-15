@@ -1,4 +1,5 @@
-// 학습 문제 데이터. 영역 4개: math(덧셈·뺄셈), korean(한글), english(영어), creative(창의력)
+// 학습 문제 데이터. 영역: math(덧셈·뺄셈), korean(한글), english(영어), creative(창의력)
+// (✍️ 따라쓰기 문제는 js/trace.js 에서 글자를 뽑아 게임에서 만듭니다)
 // 문제 하나 = { cat, t(세부 종류), q(질문), e(크게 보여 줄 그림/식, 없어도 됨), a(정답), w(오답 3개), chk(검사용 정보) }
 // 보기 = [a, ...w] 를 게임에서 섞어 씁니다. 검사: tools/check-questions.html
 (function () {
@@ -343,5 +344,5 @@
   (function () { var r = rng(404); for (var i = 0; i < 120; i++) Q.math.push(makeMath(r)); })();
 
   window.QUIZ = { bank: Q, vocab: VOCAB, makeMath: makeMath, hangul: HANGUL, mathMax: MATH_MAX,
-    labels: { math: '🔢 덧셈·뺄셈', korean: '가 한글', english: '🔤 영어', creative: '💡 창의력' } };
+    labels: { math: '🔢 덧셈·뺄셈', korean: '가 한글', write: '✍️ 따라쓰기', english: '🔤 영어', creative: '💡 창의력' } };
 })();
