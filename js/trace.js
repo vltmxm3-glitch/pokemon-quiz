@@ -1,6 +1,9 @@
 // 한글 따라쓰기: 글자 데이터 + 손가락으로 따라 쓰는 칸(TRACE.createPad)
-// 판정 방식: 글자 모양을 120×120 격자로 만들고, 손가락이 지나간 자리가 글자 면적을 80% 이상 덮으면 통과.
-//            획의 30% 이상이 글자 밖이면 지우고 다시 쓰게 함.
+// 판정 방식: 글자 모양을 120×120 격자로 만들고, 화면에 그려진 잉크와 똑같은 굵기로 판정용 격자에도 그림.
+//   - 글자 면적의 90% 이상을 칠하고, 두께 있는 빈 덩어리가 남아 있지 않아야 통과
+//     (획 가장자리·모서리의 얇은 틈은 봐주고, 짧은 획 하나를 통째로 빼먹으면 통과 안 됨)
+//   - 덜 칠하고 손을 떼면 빈 곳을 노랗게 깜빡여 알려 줌
+//   - 획의 30% 이상이 글자 밖이면 지우고 다시 쓰게 함
 (function () {
   'use strict';
 
@@ -29,7 +32,7 @@
   var FONT = '"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
 
   // ---------- 판정 설정 ----------
-  var N = 120, PASS = 0.8, OUT_MAX = 0.3;
+  var N = 120, PASS = 0.9, ERODE = 2, HOLE = 0.25, OUT_MAX = 0.3;
 
   // ---------- 음성 (기기의 한국어 음성) ----------
   function speak(text) {
@@ -89,8 +92,11 @@
     var g = cvG.getContext('2d'), ic = cvI.getContext('2d'), fc = cvF.getContext('2d');
 
     var S = 200, dpr = 1, ch = null, color = INK[0], solved = false, token = 0, alive = true;
-    var mask = null, near = null, inked = null, maskCount = 1, covered = 0, inkSamples = 0, outSamples = 0;
-    var R = 6, D = 10, strokeT = 10, offsets = [];
+    var mask = null, near = null, maskCount = 1, inkSamples = 0, outSamples = 0;
+    var D = 10, strokeT = 10, brush = 12, last = { cov: 0, hole: 0, ok: false, missing: null };
+    // 판정용 잉크 격자: 화면 잉크와 같은 획을 N×N 크기에 같은 굵기로 그림
+    var kcv = document.createElement('canvas'); kcv.width = kcv.height = N;
+    var kc = kcv.getContext('2d', { willReadFrequently: true });
     var strokes = [], cur = null, activePointer = null, lastG = null;
 
     function buildMask() {
@@ -100,7 +106,7 @@
       x.font = f.font; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.fillStyle = '#000';
       x.fillText(ch, f.x, f.y);
       var data = x.getImageData(0, 0, N, N).data, i, y, xx, dx, dy;
-      mask = new Uint8Array(N * N); near = new Uint8Array(N * N); inked = new Uint8Array(N * N);
+      mask = new Uint8Array(N * N); near = new Uint8Array(N * N);
       maskCount = 0;
       for (i = 0; i < N * N; i++) if (data[i * 4 + 3] >= 128) { mask[i] = 1; maskCount++; }
       if (!maskCount) maskCount = 1;
@@ -111,10 +117,9 @@
         if (mask[i] && (!mask[i - 1] || !mask[i + 1] || !mask[i - N] || !mask[i + N])) edge++;
       }
       strokeT = edge ? Math.max(4, Math.min(20, 2 * maskCount / edge)) : 10;
-      R = Math.max(4, Math.min(10, Math.round(strokeT * 0.55) + 1));
-      D = R + 4;
-      offsets = [];
-      for (dy = -R; dy <= R; dy++) for (dx = -R; dx <= R; dx++) if (dx * dx + dy * dy <= R * R) offsets.push([dx, dy]);
+      // 붓 굵기: 글자 획보다 약간 굵게(가운데를 따라가면 획 전체가 칠해지도록). 화면과 판정에 같은 값 사용
+      brush = Math.max(7, Math.min(22, strokeT * 1.3));
+      D = Math.round(brush / 2) + 3;
       for (y = 0; y < N; y++) for (xx = 0; xx < N; xx++) {
         if (!mask[y * N + xx]) continue;
         for (dy = -D; dy <= D; dy++) {
@@ -125,7 +130,7 @@
           }
         }
       }
-      covered = 0; inkSamples = 0; outSamples = 0;
+      inkSamples = 0; outSamples = 0;
     }
 
     function drawGuide(filled) {
@@ -154,7 +159,7 @@
     function inkStyle() {
       ic.setTransform(dpr, 0, 0, dpr, 0, 0);
       ic.lineCap = 'round'; ic.lineJoin = 'round';
-      ic.lineWidth = Math.max(S * 0.055, S * strokeT / N * 0.95);
+      ic.lineWidth = S * brush / N;
       ic.strokeStyle = color; ic.fillStyle = color;
     }
     function clearCanvas(c, x) { x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height); }
@@ -181,30 +186,91 @@
     if (ro) ro.observe(host); else window.addEventListener('resize', resize);
 
     // ---------- 판정 ----------
-    function stamp(gx, gy) {
-      var cx = Math.round(gx), cy = Math.round(gy);
-      for (var k = 0; k < offsets.length; k++) {
-        var x = cx + offsets[k][0], y = cy + offsets[k][1];
-        if (x < 0 || y < 0 || x >= N || y >= N) continue;
-        var i = y * N + x;
-        if (!inked[i]) { inked[i] = 1; if (mask[i]) covered++; }
-      }
+    // 선 밖 판정용 표본: 손가락이 지나간 점이 글자 근처(near)인지
+    function sample(gx, gy) {
       inkSamples++;
-      var ix = Math.min(N - 1, Math.max(0, cx)), iy = Math.min(N - 1, Math.max(0, cy));
+      var ix = Math.min(N - 1, Math.max(0, Math.round(gx))), iy = Math.min(N - 1, Math.max(0, Math.round(gy)));
       if (!near[iy * N + ix]) outSamples++;
     }
     function trace(nx, ny) {
       var gx = nx * N, gy = ny * N;
-      if (!lastG) { stamp(gx, gy); lastG = [gx, gy]; return; }
+      if (!lastG) { sample(gx, gy); lastG = [gx, gy]; return; }
       var dx = gx - lastG[0], dy = gy - lastG[1];
       var steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 1.5));
-      for (var s = 1; s <= steps; s++) stamp(lastG[0] + dx * s / steps, lastG[1] + dy * s / steps);
+      for (var s = 1; s <= steps; s++) sample(lastG[0] + dx * s / steps, lastG[1] + dy * s / steps);
       lastG = [gx, gy];
     }
-    function progress() { return Math.min(1, covered / maskCount / PASS); }
-    function report() { if (opts.onProgress) opts.onProgress(progress()); }
+    // 판정 격자에 획 하나 그리기(점 하나 또는 선분)
+    function kDot(p) { kc.beginPath(); kc.arc(p[0] * N, p[1] * N, brush / 2, 0, Math.PI * 2); kc.fill(); }
+    function kSeg(q, p) { kc.beginPath(); kc.moveTo(q[0] * N, q[1] * N); kc.lineTo(p[0] * N, p[1] * N); kc.stroke(); }
+    function kStyle() { kc.setTransform(1, 0, 0, 1, 0, 0); kc.lineCap = 'round'; kc.lineJoin = 'round'; kc.lineWidth = brush; kc.strokeStyle = kc.fillStyle = '#000'; }
+    // 칠한 정도 재기: 전체 비율 + 가장 큰 빈 덩어리 크기 + 빈 칸 지도
+    function measure() {
+      if (!mask) return last;
+      var d = kc.getImageData(0, 0, N, N).data, missing = new Uint8Array(N * N), covered = 0, i, x, y, it;
+      for (i = 0; i < N * N; i++) {
+        if (!mask[i]) continue;
+        if (d[i * 4 + 3] >= 128) covered++; else missing[i] = 1;
+      }
+      // 칠한 곳에 맞닿은 빈 칸을 2겹 벗겨 냄 → 얇은 틈(획 가장자리, 모서리)은 사라지고 두께 있는 빈 곳만 남음
+      var core = missing.slice();
+      for (it = 0; it < ERODE; it++) {
+        var nx = core.slice();
+        for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+          i = y * N + x; if (!core[i]) continue;
+          // 이웃이 '칠한 글자 칸'이면 벗겨 냄 (글자 바깥은 빈 곳과 같은 편으로 봄)
+          if ((x > 0 && mask[i - 1] && !core[i - 1]) || (x < N - 1 && mask[i + 1] && !core[i + 1]) ||
+              (y > 0 && mask[i - N] && !core[i - N]) || (y < N - 1 && mask[i + N] && !core[i + N])) nx[i] = 0;
+        }
+        core = nx;
+      }
+      // 남은 빈 덩어리 중 가장 큰 것
+      var seen = new Uint8Array(N * N), stack = [], hole = 0;
+      for (i = 0; i < N * N; i++) {
+        if (!core[i] || seen[i]) continue;
+        var n = 0; stack.push(i); seen[i] = 1;
+        while (stack.length) {
+          var j = stack.pop(); n++;
+          var jx = j % N;
+          if (jx > 0 && core[j - 1] && !seen[j - 1]) { seen[j - 1] = 1; stack.push(j - 1); }
+          if (jx < N - 1 && core[j + 1] && !seen[j + 1]) { seen[j + 1] = 1; stack.push(j + 1); }
+          if (j >= N && core[j - N] && !seen[j - N]) { seen[j - N] = 1; stack.push(j - N); }
+          if (j < N * N - N && core[j + N] && !seen[j + N]) { seen[j + N] = 1; stack.push(j + N); }
+        }
+        if (n > hole) hole = n;
+      }
+      var cov = covered / maskCount, holeMax = Math.max(12, HOLE * strokeT * strokeT);
+      last = { cov: cov, hole: hole / holeMax, ok: cov >= PASS && hole < holeMax, missing: missing };
+      return last;
+    }
+    // 진행 막대: 통과 조건을 다 채우기 전에는 95%에서 멈춤
+    function progress(m) { return m.ok ? 1 : Math.min(0.95, m.cov / PASS); }
+    var rafPending = false;
+    function report(now) {
+      if (!opts.onProgress) return;
+      if (now) { opts.onProgress(progress(measure())); return; }
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(function () { rafPending = false; if (alive && !solved) opts.onProgress(progress(measure())); });
+    }
+    // 덜 칠한 곳을 노랗게 세 번 깜빡임
+    function flashMissing(m) {
+      if (!m.missing) return;
+      var my = token, t0 = performance.now(), cell = S / N;
+      (function frame(t) {
+        clearCanvas(cvF, fc);
+        var k = (t - t0) / 1500;
+        if (k >= 1 || my !== token || !alive || solved) return;
+        fc.setTransform(dpr, 0, 0, dpr, 0, 0);
+        fc.globalAlpha = 0.75 * Math.abs(Math.sin(k * Math.PI * 3));
+        fc.fillStyle = '#ffc83d';
+        for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (m.missing[y * N + x]) fc.fillRect(x * cell, y * cell, cell + 0.6, cell + 0.6);
+        fc.globalAlpha = 1;
+        requestAnimationFrame(frame);
+      })(t0);
+    }
     function evaluate() {
-      var cov = covered / maskCount, out = inkSamples ? outSamples / inkSamples : 0;
+      var out = inkSamples ? outSamples / inkSamples : 0;
       if (out > OUT_MAX && inkSamples > 30) {
         pad.classList.remove('shake'); void pad.offsetWidth; pad.classList.add('shake');
         if (opts.onOut) opts.onOut();
@@ -212,8 +278,11 @@
         setTimeout(function () { if (t === token && !solved) clear(); }, 700);
         return;
       }
-      if (cov >= PASS) success();
-      else if (opts.onHint) opts.onHint(cov);
+      var m = measure();
+      if (opts.onProgress) opts.onProgress(progress(m));
+      if (m.ok) { success(); return; }
+      if (m.cov >= 0.5) flashMissing(m);
+      if (opts.onHint) opts.onHint(m.cov, m);
     }
     function success() {
       solved = true;
@@ -262,8 +331,10 @@
       try { cvI.setPointerCapture(e.pointerId); } catch (x) {}
       var p = pos(e);
       cur = [p]; strokes.push(cur); lastG = null;
+      clearCanvas(cvF, fc);
       inkStyle();
       ic.beginPath(); ic.arc(p[0] * S, p[1] * S, ic.lineWidth / 2, 0, Math.PI * 2); ic.fill();
+      kStyle(); kDot(p);
       trace(p[0], p[1]); report();
     });
     cvI.addEventListener('pointermove', function (e) {
@@ -271,10 +342,11 @@
       e.preventDefault();
       var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
       if (!evs.length) evs = [e];
-      inkStyle();
+      inkStyle(); kStyle();
       evs.forEach(function (ev) {
         var p = pos(ev), q = cur[cur.length - 1];
         ic.beginPath(); ic.moveTo(q[0] * S, q[1] * S); ic.lineTo(p[0] * S, p[1] * S); ic.stroke();
+        kSeg(q, p);
         cur.push(p); trace(p[0], p[1]);
       });
       report();
@@ -291,10 +363,11 @@
     function clear() {
       token++;
       strokes = []; cur = null; lastG = null; activePointer = null;
-      if (inked) inked.fill(0);
-      covered = 0; inkSamples = 0; outSamples = 0;
-      clearCanvas(cvI, ic);
-      report();
+      inkSamples = 0; outSamples = 0;
+      kc.setTransform(1, 0, 0, 1, 0, 0); kc.clearRect(0, 0, N, N);
+      clearCanvas(cvI, ic); clearCanvas(cvF, fc);
+      last = { cov: 0, hole: 0, ok: false, missing: null };
+      if (opts.onProgress) opts.onProgress(0);
     }
 
     function onFonts() { if (ch && !solved && inkSamples === 0 && alive) { buildMask(); drawGuide(false); } }
@@ -306,6 +379,7 @@
       setLetter: function (letter, inkColor) {
         var my = ++token;
         ch = letter; color = inkColor || INK[0]; solved = false; strokes = []; mask = null;
+        kc.setTransform(1, 0, 0, 1, 0, 0); kc.clearRect(0, 0, N, N);
         clearCanvas(cvI, ic); clearCanvas(cvF, fc);
         resize();
         return fontReady(letter).then(function () {
@@ -316,6 +390,7 @@
       clear: clear,
       resize: resize,
       isSolved: function () { return solved; },
+      stats: function () { return { cov: last.cov, hole: last.hole, ok: last.ok, brush: brush, strokeT: strokeT, missing: last.missing, mask: mask }; },
       destroy: function () {
         alive = false; token++;
         if (ro) ro.disconnect(); else window.removeEventListener('resize', resize);
