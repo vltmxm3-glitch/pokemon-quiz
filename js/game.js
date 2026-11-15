@@ -509,13 +509,15 @@
       $('actions').innerHTML = '';
       $('choices').innerHTML = '<div class="bt-trace"><div class="bt-pad" id="btPad"></div>' +
         '<div class="bt-tools"><div class="tr-meter"><i id="btMeter"></i></div>' +
-        '<button class="btn small" id="btSound">🔊</button><button class="btn small" id="btClear">↺ 다시</button></div></div>';
+        '<button class="btn small" id="btDemo">👀 순서</button><button class="btn small" id="btSound">🔊</button><button class="btn small" id="btClear">↺ 다시</button></div></div>';
       $('scr-battle').classList.add('tracing');
       var my = B;
       bPad = TRACE.createPad($('btPad'), {
+        mascot: ART(25), // 피카츄가 쓰는 순서 시범
         onProgress: function (r) { var m = $('btMeter'); if (m) { m.style.width = (r * 100) + '%'; m.classList.toggle('full', r >= 1); } },
-        onOut: function () { SFX.play('wrong'); $('qCat').textContent = '선 밖으로 나갔어! 다시 써 봐!'; },
-        onHint: function (c) { $('qCat').textContent = c >= 0.5 ? '노랗게 반짝이는 곳을 마저 칠해 봐!' : '회색 글자를 끝까지 따라가 봐!'; },
+        onWrong: function () { SFX.play('wrong'); },
+        onStrokeDone: function () { SFX.play('tap'); },
+        onHint: function (text) { $('qCat').textContent = text; },
         onSuccess: function () {
           if (B !== my) return;
           SFX.play('correct');
@@ -526,7 +528,8 @@
         }
       });
       $('btSound').addEventListener('click', function () { TRACE.speak(q.say); });
-      $('btClear').addEventListener('click', function () { SFX.play('tap'); if (bPad && !bPad.isSolved()) bPad.clear(); });
+      $('btClear').addEventListener('click', function () { SFX.play('tap'); if (bPad && !bPad.isSolved()) { bPad.clear(); $('qCat').textContent = '①번 흰 선부터 다시 써 봐!'; } });
+      $('btDemo').addEventListener('click', function () { SFX.play('tap'); if (bPad) bPad.demo(); });
       bPad.setLetter(q.ch, TRACE.INK[rand(TRACE.INK.length)]);
       later(function () { TRACE.speak(q.say); }, 250);
     }
@@ -667,9 +670,11 @@
     function ensurePad() {
       if (pad) return;
       pad = TRACE.createPad($('trPad'), {
+        mascot: ART(25), // 피카츄가 쓰는 순서 시범
         onProgress: setMeter,
-        onOut: function () { SFX.play('wrong'); $('trHint').textContent = '선 밖으로 많이 나갔어. 다시 써 볼까?'; },
-        onHint: function (c) { $('trHint').textContent = c >= 0.5 ? '잘하고 있어! 노랗게 반짝이는 곳을 마저 칠해 봐!' : '좋아, 회색 글자를 끝까지 따라가 봐!'; },
+        onWrong: function () { SFX.play('wrong'); },
+        onStrokeDone: function () { SFX.play('tap'); },
+        onHint: function (text) { $('trHint').textContent = text; },
         onSuccess: function () {
           solved = true;
           SAVE.markTrace(stage.id, idx);
@@ -697,7 +702,8 @@
       $('trAgain').addEventListener('click', function () { closeModal(); pickStage(stage, 0); });
     }
     $('trNext').addEventListener('click', next);
-    $('trClear').addEventListener('click', function () { SFX.play('tap'); if (solved) go(idx); else { pad.clear(); $('trHint').textContent = '천천히 다시 따라 써 봐!'; } });
+    $('trClear').addEventListener('click', function () { SFX.play('tap'); if (solved) go(idx); else { pad.clear(); $('trHint').textContent = '①번 흰 선부터 다시 써 봐!'; } });
+    $('trDemo').addEventListener('click', function () { SFX.play('tap'); if (solved) go(idx); else pad.demo(); });
     $('trSound').addEventListener('click', function () { TRACE.speak(stage.say[idx]); });
     $('btnTraceBack').addEventListener('click', function () { SFX.play('tap'); show('title'); });
     return {
