@@ -11,7 +11,7 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -31,6 +31,7 @@
       </div>
       <div class="title-btns">
         <button class="btn big primary" id="btnStart">▶ 시작하기</button>
+        <button class="btn green" id="btnTrace">✍️ 한글 따라쓰기 <span class="pill" id="traceCount"></span></button>
         <button class="btn" id="btnDex">📖 도감 <span class="pill" id="dexCount"></span></button>
         <button class="btn" id="btnStamps">💮 출석 도장 <span class="pill" id="stampCount"></span></button>
         <div class="title-links">
@@ -95,6 +96,29 @@
     </div>
   </section>
 
+  <!-- 한글 따라쓰기 연습 -->
+  <section id="scr-trace" class="screen">
+    <div class="topbar">
+      <button class="btn small" id="btnTraceBack">◀ 처음</button>
+      <h2>✍️ 한글 따라쓰기</h2>
+      <div class="tr-stages" id="trStages"></div>
+    </div>
+    <div class="tr-main">
+      <div class="tr-pad" id="trPad"></div>
+      <div class="tr-side">
+        <div class="tr-strip" id="trStrip"></div>
+        <div class="tr-say"><b id="trName"></b><small id="trCount"></small></div>
+        <div class="tr-meter"><i id="trMeter"></i></div>
+        <div class="tr-hint" id="trHint">회색 글자를 손가락으로 따라 써 봐!</div>
+        <div class="tr-btns">
+          <button class="btn small" id="trSound">🔊 듣기</button>
+          <button class="btn small" id="trClear">↺ 다시 쓰기</button>
+          <button class="btn green tr-next" id="trNext" disabled>다음 ▶</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- 도감 -->
   <section id="scr-dex" class="screen">
     <div class="topbar">
@@ -121,6 +145,7 @@
 <script src="js/questions.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/save.js"></script>
+<script src="js/trace.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

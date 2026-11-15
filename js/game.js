@@ -1,7 +1,8 @@
 // 포켓몬 퀴즈 탐험대 — 화면, 필드, 배틀, 도감, 출석 도장
 (function () {
   'use strict';
-  var POKEMON = window.POKEMON, QUIZ = window.QUIZ, SAVE = window.SAVE, SFX = window.SFX;
+  var POKEMON = window.POKEMON, QUIZ = window.QUIZ, SAVE = window.SAVE, SFX = window.SFX, TRACE = window.TRACE;
+  var AREA_KEYS = ['math', 'korean', 'write', 'english', 'creative'];
   var $ = function (id) { return document.getElementById(id); };
   var ART = function (id) { return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/' + id + '.png'; };
   var BY_ID = {}; POKEMON.forEach(function (p) { BY_ID[p.id] = p; });
@@ -64,6 +65,7 @@
     if (name === 'field') Field.start(); else Field.stop();
     if (name === 'title') renderTitle();
     if (name === 'region') renderRegions();
+    if (name !== 'trace') Practice.leave();
   }
   document.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { SFX.play('tap'); show(b.getAttribute('data-go')); }); });
 
@@ -82,6 +84,7 @@
   function renderTitle() {
     $('dexCount').textContent = SAVE.caughtCount() + '/' + POKEMON.length;
     $('stampCount').textContent = SAVE.data.stamps.length + '개';
+    $('traceCount').textContent = Practice.doneCount() + '/' + Practice.total();
   }
   (function titleFloat() {
     var spots = [[25, '5%', '8%'], [1, '83%', '64%'], [4, '2%', '68%'], [7, '85%', '10%']];
@@ -93,6 +96,7 @@
   })();
   $('btnStart').addEventListener('click', function () { SFX.play('tap'); show('region'); });
   $('btnDex').addEventListener('click', function () { SFX.play('tap'); openDex('title'); });
+  $('btnTrace').addEventListener('click', function () { SFX.play('tap'); Practice.open(); });
   $('btnStamps').addEventListener('click', function () { SFX.play('tap'); showStamps(false); });
   $('btnParent').addEventListener('click', function () { SFX.play('tap'); showSettings(); });
   // 전체 화면 (안드로이드·PC 브라우저. 아이폰은 「홈 화면에 추가」로 전체 화면)
@@ -133,7 +137,7 @@
     var a = SAVE.data.settings.areas;
     var row = function (k) { return '<label><input type="checkbox" data-area="' + k + '"' + (a[k] ? ' checked' : '') + '> ' + QUIZ.labels[k] + '</label>'; };
     openModal('<h3>⚙️ 어른용 설정</h3><div class="settings">' +
-      '<div>나올 문제 영역</div>' + ['math', 'korean', 'english', 'creative'].map(row).join('') +
+      '<div>나올 문제 영역</div>' + AREA_KEYS.map(row).join('') +
       '<div class="note">하나 이상은 켜 두어야 해요.</div><hr>' +
       '<button class="btn small" id="resetBtn">기록 지우기 (도장은 남김)</button>' +
       '<div class="note" id="resetNote"></div></div>');
@@ -360,6 +364,12 @@
   var recentQ = [];
   function pickQuestion(cat) {
     if (cat === 'math') return QUIZ.makeMath();
+    if (cat === 'write') {
+      var L, n = 0;
+      do { L = TRACE.randomLetter(); n++; } while (n < 10 && recentQ.indexOf(L.ch) >= 0);
+      recentQ.push(L.ch); if (recentQ.length > 60) recentQ.shift();
+      return { cat: 'write', t: 'trace', trace: true, ch: L.ch, say: L.say, q: '「' + L.ch + '」 따라 써 봐!' };
+    }
     var bank = QUIZ.bank[cat], types = {};
     bank.forEach(function (q) { types[q.t] = 1; });
     var tlist = Object.keys(types), q, tries = 0;
@@ -373,7 +383,7 @@
   }
   function pickQuestions(n) {
     var a = SAVE.data.settings.areas;
-    var cats = ['math', 'korean', 'english', 'creative'].filter(function (k) { return a[k]; });
+    var cats = AREA_KEYS.filter(function (k) { return a[k]; });
     var order = [];
     while (order.length < n) order = order.concat(shuffle(cats));
     return order.slice(0, n).map(pickQuestion);
@@ -487,7 +497,38 @@
       var q = B.qs[B.qi];
       $('progress').textContent = '문제 ' + (B.qi + 1) + ' / ' + B.qs.length;
       setBubble(q.q, QUIZ.labels[q.cat], q.e || '');
-      setChoices(shuffle([q.a].concat(q.w)), q.a);
+      if (q.trace) askTrace(q);
+      else setChoices(shuffle([q.a].concat(q.w)), q.a);
+    }
+    // ✍️ 따라쓰기 문제: 보기 대신 쓰기 칸. 다 쓰면 정답, 선 밖으로 나가도 하트는 안 깎음.
+    var bPad = null;
+    function dropPad() { if (bPad) { bPad.destroy(); bPad = null; } $('scr-battle').classList.remove('tracing'); }
+    function askTrace(q) {
+      dropPad();
+      B.busy = true; B.choices = []; B.answer = null;
+      $('actions').innerHTML = '';
+      $('choices').innerHTML = '<div class="bt-trace"><div class="bt-pad" id="btPad"></div>' +
+        '<div class="bt-tools"><div class="tr-meter"><i id="btMeter"></i></div>' +
+        '<button class="btn small" id="btSound">🔊</button><button class="btn small" id="btClear">↺ 다시</button></div></div>';
+      $('scr-battle').classList.add('tracing');
+      var my = B;
+      bPad = TRACE.createPad($('btPad'), {
+        onProgress: function (r) { var m = $('btMeter'); if (m) { m.style.width = (r * 100) + '%'; m.classList.toggle('full', r >= 1); } },
+        onOut: function () { SFX.play('wrong'); $('qCat').textContent = '선 밖으로 나갔어! 다시 써 봐!'; },
+        onHint: function (c) { $('qCat').textContent = c >= 0.5 ? '조금만 더 채워 봐!' : '회색 글자를 끝까지 따라가 봐!'; },
+        onSuccess: function () {
+          if (B !== my) return;
+          SFX.play('correct');
+          $('qCat').textContent = q.say + '! 잘 썼어!';
+          later(function () { TRACE.speak(q.say); }, 300);
+          B.qi++;
+          later(function () { dropPad(); if (B.qi < B.qs.length) askQ(); else readyToThrow(); }, 1500);
+        }
+      });
+      $('btSound').addEventListener('click', function () { TRACE.speak(q.say); });
+      $('btClear').addEventListener('click', function () { SFX.play('tap'); if (bPad && !bPad.isSolved()) bPad.clear(); });
+      bPad.setLetter(q.ch, TRACE.INK[rand(TRACE.INK.length)]);
+      later(function () { TRACE.speak(q.say); }, 250);
     }
     function choose(i) {
       if (!B || B.busy || B.wrong[i]) return;
@@ -560,8 +601,8 @@
       setBubble(B.phase === 'fled' && img.classList.contains('sil') ? '포켓몬이 도망갔어… 다음엔 꼭 잡자!' : josa(B.mon.name, '이', '가') + ' 도망갔어… 다음엔 꼭 잡자!', '', '');
       setActions([{ label: '🗺️ 필드로', fn: toField }]);
     }
-    function toField() { clearTimers(); B = null; show('field'); }
-    function run() { clearTimers(); B = null; show('field'); }
+    function toField() { clearTimers(); dropPad(); B = null; show('field'); }
+    function run() { clearTimers(); dropPad(); B = null; show('field'); }
 
     // 키보드: 1~4 로 보기 고르기, Enter/Space 로 큰 버튼
     window.addEventListener('keydown', function (e) {
@@ -577,6 +618,98 @@
     $('btnRun').addEventListener('click', function () { SFX.play('tap'); run(); });
 
     return { start: start, get: function () { return B; }, choose: choose };
+  })();
+
+  // =====================================================================
+  // ✍️ 한글 따라쓰기 연습
+  // =====================================================================
+  var Practice = (function () {
+    var ST = TRACE.STAGES, stage = ST[0], idx = 0, pad = null, solved = false;
+    function done(st) { return SAVE.traceDone(st.id); }
+    function renderStages() {
+      $('trStages').innerHTML = ST.map(function (s, i) {
+        var n = done(s).length, full = n >= s.items.length;
+        return '<button class="tab' + (s === stage ? ' on' : '') + '" data-st="' + i + '">' + s.name + (full ? ' ⭐' : '') + '</button>';
+      }).join('');
+      $('trStages').querySelectorAll('[data-st]').forEach(function (b) {
+        b.addEventListener('click', function () { SFX.play('tap'); pickStage(ST[+b.getAttribute('data-st')]); });
+      });
+      var on = $('trStages').querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+    function renderStrip() {
+      var d = done(stage);
+      $('trStrip').innerHTML = stage.items.map(function (ch, i) {
+        return '<button class="' + (d.indexOf(i) >= 0 ? 'done' : '') + (i === idx ? ' cur' : '') + '" data-i="' + i + '">' + ch + '</button>';
+      }).join('');
+      $('trStrip').querySelectorAll('[data-i]').forEach(function (b) {
+        b.addEventListener('click', function () { SFX.play('tap'); go(+b.getAttribute('data-i')); });
+      });
+      var c = $('trStrip').querySelector('.cur'); if (c) c.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+    function setMeter(r) { var m = $('trMeter'); m.style.width = (r * 100) + '%'; m.classList.toggle('full', r >= 1); }
+    function go(i) {
+      idx = i; solved = false;
+      $('trNext').disabled = true; $('trNext').classList.remove('ready');
+      $('trName').textContent = stage.say[idx];
+      $('trCount').textContent = (idx + 1) + ' / ' + stage.items.length;
+      $('trHint').textContent = '회색 글자를 손가락으로 따라 써 봐!';
+      setMeter(0);
+      renderStrip();
+      pad.setLetter(stage.items[idx], TRACE.INK[(ST.indexOf(stage) * 3 + idx) % TRACE.INK.length]);
+      TRACE.speak(stage.say[idx]);
+    }
+    function pickStage(s, start) {
+      stage = s;
+      var d = done(s), i = start;
+      if (i === undefined) { i = 0; while (i < s.items.length && d.indexOf(i) >= 0) i++; if (i >= s.items.length) i = 0; }
+      renderStages(); go(i);
+    }
+    function ensurePad() {
+      if (pad) return;
+      pad = TRACE.createPad($('trPad'), {
+        onProgress: setMeter,
+        onOut: function () { SFX.play('wrong'); $('trHint').textContent = '선 밖으로 많이 나갔어. 다시 써 볼까?'; },
+        onHint: function (c) { $('trHint').textContent = c >= 0.5 ? '잘하고 있어! 조금만 더 채워 봐!' : '좋아, 회색 글자를 끝까지 따라가 봐!'; },
+        onSuccess: function () {
+          solved = true;
+          SAVE.markTrace(stage.id, idx);
+          SFX.play('correct');
+          $('trHint').textContent = stage.say[idx] + '! ' + ['잘했어!', '최고야!', '멋져!', '훌륭해!'][rand(4)];
+          setTimeout(function () { TRACE.speak(stage.say[idx]); }, 400);
+          $('trNext').disabled = false; $('trNext').classList.add('ready');
+          renderStrip(); renderStages();
+        }
+      });
+    }
+    function next() {
+      if (!solved) return;
+      SFX.play('tap');
+      if (idx + 1 < stage.items.length) { go(idx + 1); return; }
+      var ni = ST.indexOf(stage) + 1, nextSt = ST[ni];
+      SFX.play('caught');
+      openModal('<h3>' + stage.name + ' ' + stage.sub + ' 다 썼어! 🎉</h3><div style="font-size:3rem">⭐⭐⭐</div>' +
+        '<p>' + (nextSt ? '다음은 「' + nextSt.name + '」 차례야!' : '모든 단계를 끝냈어. 정말 대단해!') + '</p>' +
+        '<div class="actions">' + (nextSt ? '<button class="btn primary" id="trGoNext">다음 단계 ▶</button>' : '') +
+        '<button class="btn" id="trAgain">한 번 더</button></div>');
+      TRACE.speak('참 잘했어요!');
+      if (nextSt) $('trGoNext').addEventListener('click', function () { closeModal(); pickStage(nextSt, 0); });
+      $('trAgain').addEventListener('click', function () { closeModal(); pickStage(stage, 0); });
+    }
+    $('trNext').addEventListener('click', next);
+    $('trClear').addEventListener('click', function () { SFX.play('tap'); if (solved) go(idx); else { pad.clear(); $('trHint').textContent = '천천히 다시 따라 써 봐!'; } });
+    $('trSound').addEventListener('click', function () { TRACE.speak(stage.say[idx]); });
+    $('btnTraceBack').addEventListener('click', function () { SFX.play('tap'); show('title'); });
+    return {
+      open: function () {
+        show('trace'); ensurePad();
+        // 처음엔 아직 다 못 쓴 첫 단계부터
+        var s = ST.filter(function (x) { return done(x).length < x.items.length; })[0] || stage;
+        requestAnimationFrame(function () { pickStage(s); });
+      },
+      leave: function () { try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {} },
+      doneCount: function () { return ST.reduce(function (n, s) { return n + done(s).length; }, 0); },
+      total: function () { return ST.reduce(function (n, s) { return n + s.items.length; }, 0); }
+    };
   })();
 
   // =====================================================================

@@ -219,6 +219,51 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .settings input[type=checkbox] { width: 1.6rem; height: 1.6rem; }
 .settings .note { font-size: 1rem; opacity: .7; }
 
+/* ---------- ✍️ 한글 따라쓰기 (쓰기 칸 공통) ---------- */
+.tpad { position: relative; background: #fff; border-radius: 1.2rem; box-shadow: 0 0 0 0.2rem var(--ink), var(--shadow); flex: none; }
+.tpad canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 1.2rem; }
+.tpad .ti { touch-action: none; }
+.tpad .tf { pointer-events: none; }
+.tpad.pop { animation: tpop .5s ease; }
+.tpad.shake { animation: shake .45s; }
+@keyframes tpop { 0% { transform: scale(1); } 40% { transform: scale(1.05); } 100% { transform: scale(1); } }
+.tr-meter { height: 0.9rem; border-radius: 1rem; background: #fff; border: 0.15rem solid var(--ink); overflow: hidden; }
+.tr-meter i { display: block; height: 100%; width: 0; background: var(--yellow); transition: width .15s, background .2s; }
+.tr-meter i.full { background: var(--green); }
+
+/* 배틀 속 따라쓰기 문제 */
+#scr-battle.tracing .panel { justify-content: flex-start; }
+#scr-battle.tracing .choices { display: block; flex: 1; min-height: 0; }
+.bt-trace { height: 100%; display: flex; gap: 0.7rem; align-items: stretch; }
+.bt-pad { flex: 1; min-width: 0; min-height: 0; display: grid; place-items: center; }
+.bt-tools { width: 6.5rem; display: flex; flex-direction: column; justify-content: center; gap: 0.6rem; }
+.bt-tools .btn { font-size: 1.2rem; }
+
+/* 따라쓰기 연습 화면 */
+#scr-trace { background: linear-gradient(#e3f4ff, #bfe5ff); }
+.tr-stages { display: flex; gap: 0.4rem; margin-left: auto; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 0.2rem; }
+.tr-stages::-webkit-scrollbar { display: none; }
+.tr-stages .tab { flex: none; font-size: 1.05rem; padding: 0.25rem 0.75rem; }
+.tr-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem; padding: 0.3rem 1rem 0.9rem; }
+.tr-pad { min-width: 0; min-height: 0; display: grid; place-items: center; }
+.tr-side { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 0.7rem; }
+.tr-strip { display: flex; gap: 0.35rem; overflow-x: auto; scrollbar-width: none; padding: 0.25rem; }
+.tr-strip::-webkit-scrollbar { display: none; }
+.tr-strip button { flex: none; min-width: 2.6rem; height: 2.6rem; border-radius: 0.8rem; border: 0.15rem solid var(--ink); background: #fff8; font-family: 'Noto Sans KR', var(--font); font-weight: 700; font-size: 1.25rem; padding: 0 0.3rem; color: #777; }
+.tr-strip button.done { background: #fff; color: var(--green-d); }
+.tr-strip button.cur { background: var(--ink); color: #fff; }
+.tr-say { display: flex; align-items: baseline; gap: 0.8rem; }
+.tr-say b { font-weight: normal; font-size: 2.6rem; line-height: 1.1; }
+.tr-say small { font-size: 1.2rem; opacity: .7; }
+.tr-hint { font-size: 1.35rem; min-height: 1.6em; }
+.tr-btns { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.tr-btns .btn.small { font-size: 1.25rem; padding: 0.45rem 0.9rem; }
+.tr-next { font-size: 1.6rem; margin-left: auto; }
+.tr-next:disabled { background: var(--grey); color: #fff; cursor: default; }
+.tr-next.ready { animation: trnudge 1.2s ease-in-out infinite; }
+@keyframes trnudge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .tpad.pop, .tpad.shake, .tr-next.ready { animation: none; } }
+
 /* ---------- 세로 화면 ---------- */
 @media (orientation: portrait) {
   html { font-size: clamp(12px, 3.4vw, 24px); }
@@ -227,6 +272,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   .battle-main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 38%) auto; }
   .mon-wrap { width: auto; height: 100%; }
   .bubble::before { display: none; }
+  #scr-battle.tracing .battle-main { grid-template-rows: minmax(0, 24%) minmax(0, 1fr); }
+  #scr-battle.tracing .panel { min-height: 0; }
+  .tr-main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .tr-stages { margin-left: 0; }
 }
 /* 낮은 가로 화면(폰 가로) */
 @media (orientation: landscape) and (max-height: 430px) {

@@ -2,9 +2,9 @@
 (function () {
   'use strict';
   var KEY = 'pokemonQuiz.save.v1';
-  var AREAS = ['math', 'korean', 'english', 'creative'];
+  var AREAS = ['math', 'korean', 'write', 'english', 'creative'];
   function blank() {
-    return { caught: {}, stamps: [], settings: { sound: true, areas: { math: true, korean: true, english: true, creative: true } }, stats: { battles: 0, sinceGold: 0 } };
+    return { caught: {}, stamps: [], settings: { sound: true, areas: { math: true, korean: true, write: true, english: true, creative: true } }, stats: { battles: 0, sinceGold: 0 }, trace: {} };
   }
   function load() {
     var d = null;
@@ -17,6 +17,7 @@
       if (typeof d.settings.sound === 'boolean') b.settings.sound = d.settings.sound;
       if (d.settings.areas) AREAS.forEach(function (a) { if (typeof d.settings.areas[a] === 'boolean') b.settings.areas[a] = d.settings.areas[a]; });
     }
+    if (d.trace && typeof d.trace === 'object') b.trace = d.trace;
     if (d.stats) { b.stats.battles = d.stats.battles | 0; b.stats.sinceGold = d.stats.sinceGold | 0; }
     if (!AREAS.some(function (a) { return b.settings.areas[a]; })) b.settings.areas.math = true;
     return b;
@@ -45,6 +46,12 @@
       this.persist();
       return isNew;
     },
+    // 따라쓰기 연습: 단계별로 다 쓴 글자 번호
+    traceDone: function (stageId) { return data.trace[stageId] || []; },
+    markTrace: function (stageId, i) {
+      var a = data.trace[stageId] || (data.trace[stageId] = []);
+      if (a.indexOf(i) < 0) { a.push(i); this.persist(); }
+    },
     isCaught: function (id) { return !!data.caught[id]; },
     caughtCount: function () { return Object.keys(data.caught).length; },
     reset: function () {
@@ -53,6 +60,7 @@
       Object.keys(data).forEach(function (k) { delete data[k]; });
       Object.keys(fresh).forEach(function (k) { data[k] = fresh[k]; });
       data.stamps = keepStamps;
+      data.trace = {};
       this.persist();
     }
   };
