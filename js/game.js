@@ -675,7 +675,8 @@
           SAVE.markTrace(stage.id, idx);
           SFX.play('correct');
           $('trHint').textContent = stage.say[idx] + '! ' + ['잘했어!', '최고야!', '멋져!', '훌륭해!'][rand(4)];
-          setTimeout(function () { TRACE.speak(stage.say[idx]); }, 400);
+          var sayNow = stage.say[idx], at = idx, st = stage;
+          setTimeout(function () { if (st === stage && at === idx) TRACE.speak(sayNow); }, 400);
           $('trNext').disabled = false; $('trNext').classList.add('ready');
           renderStrip(); renderStages();
         }
