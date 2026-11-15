@@ -2,7 +2,7 @@
 //
 // 글자는 글꼴이 아니라 '획 데이터'로 그립니다. 획마다 쓰는 순서와 방향이 들어 있어서
 //   - 획 순서별 색(①빨강 ②주황 ③초록 ④파랑)과 가운데 흰 실선, 시작점 번호·방향 화살표를 보여 주고
-//   - 쓰기 전에 피카츄가 획 순서대로 2번 시범을 보이고
+//   - 쓰기 전에 이브이가 획 순서대로 2번 시범을 보이고
 //   - 아이가 쓴 한 획이 '지금 차례인 획'을 시작점부터 끝까지, 맞는 방향으로 따라갔는지 판정합니다.
 (function () {
   'use strict';
@@ -94,7 +94,7 @@
   var STEP = 0.01;         // 획 가운데 선을 이 간격으로 나눠 판정
   var DONE = 0.88;         // 획 길이의 88% 이상 따라가야 완료
   var OFF_MAX = 0.25;      // 손가락 점의 25% 넘게 선에서 벗어나면 다시
-  var DEMO_SPEED = 0.5;    // 피카츄 시범 속도: 1초에 칸 너비의 절반
+  var DEMO_SPEED = 0.75;   // 시범 속도: 1초에 칸 너비의 3/4
   var DEMO_LOOPS = 2;
 
   // ---------- 음성 (기기의 한국어 음성) ----------
@@ -156,7 +156,7 @@
     c.closePath();
   }
 
-  // 시범 길잡이(피카츄) 그림: 한 번만 불러 둠. 못 불러오면 노란 동그라미로 대신
+  // 시범 길잡이(이브이) 그림: 한 번만 불러 둠. 못 불러오면 갈색 동그라미 얼굴로 대신
   var mascots = {};
   function mascotImg(src) {
     if (!src) return null;
@@ -172,7 +172,7 @@
   // =====================================================================
   // 따라 쓰는 칸
   // host: 칸이 들어갈 상자(크기가 정해진 요소). 칸은 host 안에서 가장 큰 정사각형으로 맞춤.
-  // opts.mascot: 시범 길잡이 그림 주소(피카츄)
+  // opts.mascot: 시범 길잡이 그림 주소(이브이)
   // opts.onProgress(0~1), opts.onSuccess(), opts.onHint(문구, 종류), opts.onWrong(), opts.onStroke(완료한 획 수, 전체),
   // opts.onDemo(true/false)
   // =====================================================================
@@ -285,7 +285,7 @@
       if (opts.onStroke) opts.onStroke(k, lines.length);
     }
 
-    // ---------- 피카츄 시범 ----------
+    // ---------- 이브이 시범 ----------
     function stopDemo(quiet) {
       if (!demo) return;
       demo = null; clearCanvas(cvF, fc);
@@ -300,7 +300,7 @@
       var cx = x + sz * 0.18, cy = y - sz * 0.45 + bob;
       if (mascot && mascot._ok) fc.drawImage(mascot, cx - sz / 2, cy - sz / 2, sz, sz);
       else {
-        fc.beginPath(); fc.arc(cx, cy, sz * 0.32, 0, Math.PI * 2); fc.fillStyle = '#ffd23f'; fc.fill();
+        fc.beginPath(); fc.arc(cx, cy, sz * 0.32, 0, Math.PI * 2); fc.fillStyle = '#c98b52'; fc.fill();
         fc.lineWidth = Math.max(2, S * 0.008); fc.strokeStyle = '#2b2b3a'; fc.stroke();
         fc.fillStyle = '#2b2b3a';
         fc.beginPath(); fc.arc(cx - sz * 0.1, cy - sz * 0.04, sz * 0.035, 0, Math.PI * 2); fc.arc(cx + sz * 0.1, cy - sz * 0.04, sz * 0.035, 0, Math.PI * 2); fc.fill();
@@ -313,8 +313,8 @@
       var plan = [], t = 400;
       for (var loop = 0; loop < DEMO_LOOPS; loop++) {
         for (var i = 0; i < lines.length; i++) {
-          var dur = Math.max(450, lineLen(lines[i]) / DEMO_SPEED * 1000);
-          plan.push({ loop: loop, i: i, t0: t, dur: dur }); t += dur + 350;
+          var dur = Math.max(350, lineLen(lines[i]) / DEMO_SPEED * 1000);
+          plan.push({ loop: loop, i: i, t0: t, dur: dur }); t += dur + 280;
         }
         t += 550;
       }
@@ -345,7 +345,7 @@
       var my = token, pl = demoPlan(), t0 = performance.now();
       demo = { my: my };
       if (opts.onDemo) opts.onDemo(true);
-      hint('피카츄가 쓰는 순서를 보여 줄게! 잘 봐!', 'demo');
+      hint((opts.mascotName || '친구') + '가 쓰는 순서를 보여 줄게! 잘 봐!', 'demo');
       (function frame(now) {
         if (!demo || demo.my !== my || token !== my || !alive) return;
         var t = now - t0;
@@ -506,7 +506,7 @@
 
     return {
       el: pad,
-      // 새 글자 놓기 → 칸을 그리고 피카츄 시범 시작(o.noDemo 면 시범 없이)
+      // 새 글자 놓기 → 칸을 그리고 이브이 시범 시작(o.noDemo 면 시범 없이)
       setLetter: function (letter, _color, o) {
         var data = letterStrokes(letter);
         ch = letter; solved = false;
