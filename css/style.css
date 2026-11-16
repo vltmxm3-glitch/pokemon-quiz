@@ -86,12 +86,12 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- 필드 ---------- */
 #field { position: absolute; inset: 0; touch-action: none; overflow: hidden; cursor: pointer; }
-#deco { position: absolute; inset: 0; pointer-events: none; }
-#deco span { position: absolute; transform: translate(-50%, -100%); line-height: 1; }
-#field.forest { background: radial-gradient(circle at 20% 70%, #8bd86e 0 8%, transparent 9%), radial-gradient(circle at 70% 40%, #8bd86e 0 7%, transparent 8%), linear-gradient(#a9e98c, #78c95e); }
-#field.city { background: linear-gradient(90deg, transparent 47%, #fff 47% 48%, transparent 48% 52%, #fff 52% 53%, transparent 53%), linear-gradient(transparent 44%, #9aa0ad 44% 56%, transparent 56%), linear-gradient(90deg, transparent 44%, #9aa0ad 44% 56%, transparent 56%), linear-gradient(#d9e2f2, #c3cfe3); }
-#field.desert { background: radial-gradient(ellipse at 30% 80%, #f6c56c 0 18%, transparent 19%), radial-gradient(ellipse at 80% 30%, #f6c56c 0 14%, transparent 15%), linear-gradient(#ffe6a0, #f1c271); }
-#field.sea { background: repeating-linear-gradient(170deg, transparent 0 2.2rem, #ffffff33 2.2rem 2.5rem), linear-gradient(#57b8ff 0 38%, #bfeaff 38% 42%, #ffe7a8 42%, #f7d48a); }
+#deco, #homeDeco { position: absolute; inset: 0; pointer-events: none; }
+#deco span, #homeDeco span { position: absolute; transform: translate(-50%, -100%); line-height: 1; }
+#field.forest, #homeField.forest { background: radial-gradient(circle at 20% 70%, #8bd86e 0 8%, transparent 9%), radial-gradient(circle at 70% 40%, #8bd86e 0 7%, transparent 8%), linear-gradient(#a9e98c, #78c95e); }
+#field.city, #homeField.city { background: linear-gradient(90deg, transparent 47%, #fff 47% 48%, transparent 48% 52%, #fff 52% 53%, transparent 53%), linear-gradient(transparent 44%, #9aa0ad 44% 56%, transparent 56%), linear-gradient(90deg, transparent 44%, #9aa0ad 44% 56%, transparent 56%), linear-gradient(#d9e2f2, #c3cfe3); }
+#field.desert, #homeField.desert { background: radial-gradient(ellipse at 30% 80%, #f6c56c 0 18%, transparent 19%), radial-gradient(ellipse at 80% 30%, #f6c56c 0 14%, transparent 15%), linear-gradient(#ffe6a0, #f1c271); }
+#field.sea, #homeField.sea { background: repeating-linear-gradient(170deg, transparent 0 2.2rem, #ffffff33 2.2rem 2.5rem), linear-gradient(#57b8ff 0 38%, #bfeaff 38% 42%, #ffe7a8 42%, #f7d48a); }
 #player { position: absolute; left: 0; top: 0; pointer-events: none; will-change: transform; }
 #player .body { width: 100%; height: 100%; transform-origin: 50% 100%; }
 #player.walk .body { animation: walk 0.32s ease-in-out infinite; }
@@ -263,6 +263,34 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .tr-next.ready { animation: trnudge 1.2s ease-in-out infinite; }
 @keyframes trnudge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { .tpad.pop, .tpad.shake, .tr-next.ready { animation: none; } }
+
+/* ---------- 포켓몬 홈 ---------- */
+.home-cards { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; }
+.home-card { border: 0.2rem solid var(--ink); border-radius: 1.2rem; padding: 0.8rem 0.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; box-shadow: var(--shadow); font-size: 1.3rem; min-width: 0; }
+.home-card:active { transform: translateY(0.2rem); box-shadow: none; }
+.home-card .em { font-size: 2.8rem; line-height: 1.1; }
+.home-card .faces { display: flex; justify-content: center; min-height: 2.6rem; }
+.home-card .faces img { width: 2.6rem; height: 2.6rem; object-fit: contain; margin: 0 -0.35rem; }
+.home-card .ct { font-size: 1rem; background: #fffc; border-radius: 1rem; padding: 0 0.6rem; border: 0.12rem solid var(--ink); }
+.home-card.forest { background: linear-gradient(#c8f5b5, #8fd873); }
+.home-card.city { background: linear-gradient(#eef1ff, #c3cfe3); }
+.home-card.desert { background: linear-gradient(#fff1c4, #f1c271); }
+.home-card.sea { background: linear-gradient(#bfeaff, #6cc3ff); }
+#homeField { position: absolute; inset: 0; overflow: hidden; isolation: isolate; z-index: 0; } /* 포켓몬 겹침 순서를 이 안에만 가둠(도감 창·버튼 위로 안 올라오게) */
+#homeMons { position: absolute; inset: 0; }
+.hmon { position: absolute; left: 0; top: 0; padding: 0; border: 0; background: none; cursor: pointer; will-change: transform; touch-action: manipulation; }
+.hmon img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.hmon .sh { position: absolute; left: 18%; bottom: -4%; width: 64%; height: 14%; border-radius: 50%; background: rgba(0,0,0,.22); }
+.hmon .bd { position: absolute; inset: 0; }
+.home-hud { padding-right: 4.2rem; }
+.home-hud { gap: 0.4rem; }
+.home-hud .hud-title { font-size: 1.25rem; padding: 0.2rem 0.6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.home-hud .btn, .home-pager { flex: none; white-space: nowrap; }
+.home-pager { display: flex; align-items: center; gap: 0.4rem; background: #fffc; border: 0.15rem solid var(--ink); border-radius: 1rem; padding: 0.15rem 0.4rem; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.home-pager .btn.small { padding: 0.2rem 0.6rem; }
+.home-pager .btn:disabled { opacity: .35; }
+#homeHint:empty { display: none; }
+@media (orientation: portrait) { .home-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---------- 세로 화면 ---------- */
 @media (orientation: portrait) {
