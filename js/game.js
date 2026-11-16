@@ -66,6 +66,7 @@
     if (name === 'title') renderTitle();
     if (name === 'region') renderRegions();
     if (name !== 'trace') Practice.leave();
+    if (name !== 'home') Home.stop();
   }
   document.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { SFX.play('tap'); show(b.getAttribute('data-go')); }); });
 
@@ -190,6 +191,21 @@
     '<circle cx="38" cy="52" r="3.5" fill="#ff9aa2"/><circle cx="66" cy="52" r="3.5" fill="#ff9aa2"/>' +
     '<path d="M46 53 Q52 58 57 53" stroke="#2b2b3a" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>';
 
+  // 지역 장식(나무·건물·선인장·조개 등). 필드와 포켓몬 홈이 함께 씀
+  function decoHTML(rk) {
+    var R = REGIONS[rk], seed = REGION_KEYS.indexOf(rk) * 97 + 13;
+    var r = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    var html = '';
+    for (var i = 0; i < 16; i++) {
+      var x = 4 + r() * 92, y = 22 + r() * 76, size = 2.2 + r() * 2.2;
+      if (rk === 'sea' && y < 42 && R.deco[i % R.deco.length] !== '⛱️') y = 44 + r() * 50;
+      html += '<span style="left:' + x + '%;top:' + y + '%;font-size:' + size + 'rem;opacity:.92">' + R.deco[i % R.deco.length] + '</span>';
+    }
+    if (rk === 'sea') html += '<span style="left:20%;top:30%;font-size:3rem">⛵</span><span style="left:70%;top:22%;font-size:2.4rem">🐳</span>';
+    if (rk === 'desert') html += '<span style="left:85%;top:20%;font-size:3.2rem">☀️</span>';
+    return html;
+  }
+
   var Field = (function () {
     var el = $('field'), playerEl = $('player'), ballsEl = $('balls');
     var F = { running: false, raf: 0, last: 0, w: 0, h: 0, px: 0, py: 0, tx: null, ty: null, face: 1, balls: [], keys: {}, dragging: false, lock: 0, built: null, ph: 80, br: 24, top: 60 };
@@ -217,17 +233,8 @@
       F.py = Math.max(F.top + F.ph * 0.8, Math.min(F.h - 4, F.py));
     }
     function buildDeco() {
-      var R = REGIONS[region], seed = REGION_KEYS.indexOf(region) * 97 + 13;
-      var r = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-      var html = '';
-      for (var i = 0; i < 16; i++) {
-        var x = 4 + r() * 92, y = 22 + r() * 76, size = 2.2 + r() * 2.2;
-        if (region === 'sea' && y < 42 && R.deco[i % R.deco.length] !== '⛱️') y = 44 + r() * 50;
-        html += '<span style="left:' + x + '%;top:' + y + '%;font-size:' + size + 'rem;opacity:.92">' + R.deco[i % R.deco.length] + '</span>';
-      }
-      if (region === 'sea') html += '<span style="left:20%;top:30%;font-size:3rem">⛵</span><span style="left:70%;top:22%;font-size:2.4rem">🐳</span>';
-      if (region === 'desert') html += '<span style="left:85%;top:20%;font-size:3.2rem">☀️</span>';
-      $('deco').innerHTML = html;
+      var R = REGIONS[region];
+      $('deco').innerHTML = decoHTML(region);
       el.className = region;
       $('fieldTitle').textContent = R.em + ' ' + R.name;
     }
@@ -579,7 +586,7 @@
     }
     function caught() {
       var mon = B.mon;
-      var isNew = SAVE.catchMon(mon.id);
+      var isNew = SAVE.catchMon(mon.id, region);
       B.phase = 'done';
       $('throwBall').className = 'throw-ball done';
       SFX.play('caught');
@@ -721,6 +728,110 @@
   })();
 
   // =====================================================================
+  // 🏠 포켓몬 홈: 지역마다 잡은 포켓몬이 돌아다님 (한 쪽에 20마리, 잡은 순서대로)
+  // =====================================================================
+  var Home = (function () {
+    var PER_PAGE = 20;
+    var H = { rk: 'forest', page: 0, mons: [], raf: 0, last: 0, w: 0, h: 0, top: 60, size: 40, running: false };
+    var field = $('homeField'), monsEl = $('homeMons');
+
+    // 포켓몬 크기: 한글 따라쓰기 칸의 이브이(칸의 1/5)의 2/3 → 칸 크기 × 0.2 × 2/3
+    function monSize() {
+      var pad = document.querySelector('#trPad .tpad'), padS = pad ? pad.getBoundingClientRect().width : 0;
+      if (!(padS > 60)) { // 따라쓰기 칸을 아직 안 열었으면 이 화면에서 칸이 될 크기를 어림
+        var w = window.innerWidth, h = window.innerHeight;
+        padS = w > h ? Math.min(h - 110, (w - 60) / 2) : Math.min(w - 32, h * 0.55);
+      }
+      return Math.max(34, Math.round(padS * 0.2 * 2 / 3));
+    }
+    function measure() {
+      var r = field.getBoundingClientRect();
+      H.w = r.width; H.h = r.height;
+      H.top = Math.max(50, document.querySelector('.home-hud').getBoundingClientRect().height + 8);
+      H.size = monSize();
+      H.mons.forEach(function (m) { m.el.style.width = m.el.style.height = H.size + 'px'; clamp(m); });
+    }
+    function clamp(m) {
+      var s = H.size;
+      m.x = Math.max(s / 2, Math.min(H.w - s / 2, m.x));
+      m.y = Math.max(H.top + s, Math.min(H.h - 6, m.y));
+    }
+    function pickTarget(m) { // 근처 아무 곳으로 산책
+      var s = H.size, reach = Math.max(H.w, H.h) * 0.35;
+      m.tx = Math.max(s / 2, Math.min(H.w - s / 2, m.x + (Math.random() * 2 - 1) * reach));
+      m.ty = Math.max(H.top + s, Math.min(H.h - 6, m.y + (Math.random() * 2 - 1) * reach * 0.7));
+      m.speed = H.size * (0.9 + Math.random() * 1.1); // 1초에 자기 몸의 0.9~2배
+    }
+    function pages() { return Math.max(1, Math.ceil(homeList(H.rk).length / PER_PAGE)); }
+    function build() {
+      var list = homeList(H.rk), n = pages();
+      H.page = Math.max(0, Math.min(n - 1, H.page));
+      var show = list.slice(H.page * PER_PAGE, H.page * PER_PAGE + PER_PAGE);
+      monsEl.innerHTML = '';
+      H.mons = show.map(function (p, i) {
+        var el = document.createElement('button');
+        el.className = 'hmon'; el.type = 'button'; el.setAttribute('aria-label', p.name);
+        el.innerHTML = '<span class="sh"></span><span class="bd"><img src="' + ART(p.id) + '" alt=""></span>';
+        imgFallback(el.querySelector('img'));
+        el.style.width = el.style.height = H.size + 'px';
+        el.addEventListener('click', function () { SFX.play('tap'); showMonModal(p); });
+        monsEl.appendChild(el);
+        // 처음 자리: 화면에 고르게 흩어 놓기
+        var cols = 5, gx = (i % cols + 0.5 + (Math.random() - 0.5) * 0.6) / cols, gy = (Math.floor(i / cols) + 0.5 + (Math.random() - 0.5) * 0.5) / Math.ceil(show.length / cols);
+        var m = { p: p, el: el, body: el.querySelector('.bd'), x: gx * H.w, y: H.top + H.size + gy * (H.h - H.top - H.size - 10),
+          face: Math.random() < 0.5 ? -1 : 1, wait: Math.random() * 1500, phase: Math.random() * 6, hop: Math.random() < 0.3 };
+        clamp(m); pickTarget(m);
+        return m;
+      });
+      $('homePage').textContent = (H.page + 1) + ' / ' + n;
+      $('homePager').style.visibility = n > 1 ? 'visible' : 'hidden';
+      $('homePrev').disabled = H.page === 0; $('homeNext').disabled = H.page >= n - 1;
+      $('homeHint').textContent = list.length ? '' : '아직 ' + REGIONS[H.rk].name + '에서 잡은 포켓몬이 없어. 필드에서 잡아 봐!';
+      render(0);
+    }
+    function render(t) {
+      H.mons.forEach(function (m) {
+        var bob = m.moving ? -Math.abs(Math.sin(t / 110 + m.phase)) * H.size * (m.hop ? 0.22 : 0.1) : 0;
+        m.el.style.transform = 'translate(' + (m.x - H.size / 2) + 'px,' + (m.y - H.size) + 'px)';
+        m.el.style.zIndex = Math.round(m.y);
+        m.body.style.transform = 'translateY(' + bob + 'px) scaleX(' + m.face + ')';
+      });
+    }
+    function step(t) {
+      if (!H.running) return;
+      var dt = Math.min(0.05, (t - (H.last || t)) / 1000); H.last = t;
+      H.mons.forEach(function (m) {
+        if (m.wait > 0) { m.wait -= dt * 1000; m.moving = false; if (m.wait <= 0) pickTarget(m); return; }
+        var dx = m.tx - m.x, dy = m.ty - m.y, d = Math.hypot(dx, dy), v = m.speed * dt;
+        if (d <= v) { m.x = m.tx; m.y = m.ty; m.moving = false; m.wait = 600 + Math.random() * 2400; m.hop = Math.random() < 0.3; return; }
+        m.moving = true; m.x += dx / d * v; m.y += dy / d * v;
+        if (Math.abs(dx) > 1) m.face = dx > 0 ? -1 : 1; // 그림이 왼쪽을 보고 있어서 오른쪽으로 갈 때 뒤집음
+      });
+      render(t);
+      H.raf = requestAnimationFrame(step);
+    }
+    function start() { if (H.running) return; H.running = true; H.last = 0; H.raf = requestAnimationFrame(step); }
+    function stop() { H.running = false; cancelAnimationFrame(H.raf); }
+    $('homePrev').addEventListener('click', function () { SFX.play('tap'); if (H.page > 0) { H.page--; build(); } });
+    $('homeNext').addEventListener('click', function () { SFX.play('tap'); if (H.page < pages() - 1) { H.page++; build(); } });
+    $('btnHomeBack').addEventListener('click', function () { SFX.play('tap'); dexFilter = 'home'; show('dex'); renderDex(); });
+    window.addEventListener('resize', function () { if (current === 'home') measure(); });
+    return {
+      open: function (rk) {
+        H.rk = rk; H.page = 0;
+        var R = REGIONS[rk];
+        field.className = rk;
+        $('homeDeco').innerHTML = decoHTML(rk);
+        $('homeTitle').textContent = R.em + ' ' + R.name + ' ' + homeList(rk).length + '마리';
+        show('home');
+        measure(); build(); start();
+      },
+      stop: stop,
+      state: function () { return H; }
+    };
+  })();
+
+  // =====================================================================
   // 도감
   // =====================================================================
   var dexFilter = 'all';
@@ -728,7 +839,8 @@
   function renderDex() {
     var c = SAVE.caughtCount();
     $('dexCount2').textContent = c + ' / ' + POKEMON.length;
-    document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-filter') === dexFilter); });
+    document.querySelectorAll('#scr-dex .tab').forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-filter') === dexFilter); });
+    if (dexFilter === 'home') { renderHomeCards(); return; }
     var list = dexFilter === 'caught' ? POKEMON.filter(function (p) { return SAVE.isCaught(p.id); }) : POKEMON;
     if (!list.length) { $('dexGrid').innerHTML = '<div class="dex-empty">아직 잡은 포켓몬이 없어요.<br>필드에서 몬스터볼을 찾아 봐!</div>'; return; }
     $('dexGrid').innerHTML = list.map(function (p) {
@@ -742,8 +854,11 @@
   }
   $('dexGrid').addEventListener('click', function (e) {
     var cell = e.target.closest('.dex-cell'); if (!cell) return;
-    var p = BY_ID[cell.getAttribute('data-id')];
     SFX.play('tap');
+    showMonModal(BY_ID[cell.getAttribute('data-id')]);
+  });
+  // 포켓몬 한 마리 도감 창 (도감 칸, 홈에서 누른 포켓몬 모두)
+  function showMonModal(p) {
     if (!SAVE.isCaught(p.id)) {
       openModal('<h3>No.' + String(p.id).padStart(3, '0') + ' ???</h3><img class="big-mon" style="filter:brightness(0);opacity:.4" src="' + ART(p.id) + '" alt=""><p>' + (p.rare ? '금색 몬스터볼에서 만날 수 있어!' : '아직 못 만났어. 어느 지역에 있을까?') + '</p>');
       return;
@@ -751,12 +866,48 @@
     var c = SAVE.data.caught[p.id];
     openModal('<h3>No.' + String(p.id).padStart(3, '0') + ' ' + esc(p.name) + (p.rare ? ' ✨' : '') + '</h3><img class="big-mon" src="' + ART(p.id) + '" alt="">' +
       '<div class="types" style="display:flex;gap:.4rem;justify-content:center;font-size:1.3rem">' + typeBadges(p.types) + '</div>' +
-      '<p>잡은 횟수: ' + c.n + '번 · 처음 잡은 날: ' + c.first + '</p>');
-  });
-  document.querySelectorAll('.tab').forEach(function (t) {
+      '<p>잡은 횟수: ' + c.n + '번 · 처음 잡은 날: ' + c.first + (c.region && REGIONS[c.region] ? ' · 사는 곳: ' + REGIONS[c.region].em + ' ' + REGIONS[c.region].name : '') + '</p>');
+  }
+  // 홈 탭: 지역 4곳 고르기
+  function homeList(rk) { // 그 지역 집에 사는 포켓몬, 잡은 순서대로
+    var C = SAVE.data.caught;
+    return Object.keys(C).filter(function (id) { return C[id].region === rk && BY_ID[id]; })
+      .sort(function (a, b) { return (C[a].seq || 0) - (C[b].seq || 0); }).map(function (id) { return BY_ID[id]; });
+  }
+  function renderHomeCards() {
+    $('dexGrid').innerHTML = '<div class="home-cards">' + REGION_KEYS.map(function (rk) {
+      var R = REGIONS[rk], list = homeList(rk);
+      var faces = list.slice(-3).map(function (p) { return '<img src="' + ART(p.id) + '" alt="">'; }).join('');
+      return '<button class="home-card ' + rk + '" data-home="' + rk + '"><div class="em">' + R.em + '</div><div>' + R.name + ' 집</div>' +
+        '<div class="faces">' + faces + '</div><div class="ct">' + list.length + '마리</div></button>';
+    }).join('') + '</div>';
+    $('dexGrid').querySelectorAll('img').forEach(imgFallback);
+    $('dexGrid').querySelectorAll('[data-home]').forEach(function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); SFX.play('tap'); Home.open(b.getAttribute('data-home')); });
+    });
+  }
+  document.querySelectorAll('#scr-dex .tab').forEach(function (t) {
     t.addEventListener('click', function () { SFX.play('tap'); dexFilter = t.getAttribute('data-filter'); renderDex(); $('dexGrid').scrollTop = 0; });
   });
   $('btnDexBack').addEventListener('click', function () { SFX.play('tap'); show(dexReturn); });
+
+  // ---------- 예전 기록 정리: 지역·잡은 순서가 없는 포켓몬 ----------
+  // 지역 기록이 생기기 전에 잡은 포켓몬은 타입에 맞는 지역 집으로, 순서는 처음 잡은 날짜 순으로 정함
+  (function migrateHomes() {
+    var C = SAVE.data.caught, st = SAVE.data.stats, changed = false, maxSeq = 0;
+    Object.keys(C).forEach(function (id) { maxSeq = Math.max(maxSeq, C[id].seq || 0); });
+    if (st.seq < maxSeq) { st.seq = maxSeq; changed = true; }
+    Object.keys(C).filter(function (id) { return !C[id].seq; })
+      .sort(function (a, b) { return String(C[a].first).localeCompare(String(C[b].first)) || (a - b); })
+      .forEach(function (id) { C[id].seq = ++st.seq; changed = true; });
+    Object.keys(C).forEach(function (id) {
+      if (C[id].region && REGIONS[C[id].region]) return;
+      var p = BY_ID[id];
+      C[id].region = (p && REGION_KEYS.filter(function (rk) { return inRegion(p, rk); })[0]) || 'forest';
+      changed = true;
+    });
+    if (changed) SAVE.persist();
+  })();
 
   // ---------- 시작 ----------
   renderSound();
@@ -764,5 +915,5 @@
   if (SAVE.stampToday()) { renderTitle(); setTimeout(function () { SFX.play('stamp'); showStamps(true); }, 400); }
 
   // 시험용 손잡이 (.test 의 자동 시험에서 씀)
-  window.PQ = { show: show, battle: Battle, practice: Practice, field: Field, save: SAVE, cfg: CFG, regions: REGIONS, current: function () { return current; } };
+  window.PQ = { show: show, battle: Battle, practice: Practice, home: Home, field: Field, save: SAVE, cfg: CFG, regions: REGIONS, current: function () { return current; } };
 })();

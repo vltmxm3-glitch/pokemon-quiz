@@ -128,9 +128,25 @@
       <div class="tabs">
         <button class="tab on" data-filter="all">전체</button>
         <button class="tab" data-filter="caught">잡은 포켓몬</button>
+        <button class="tab" data-filter="home">🏠 홈</button>
       </div>
     </div>
     <div class="dex-grid" id="dexGrid"></div>
+  </section>
+
+  <!-- 포켓몬 홈: 지역별로 잡은 포켓몬이 돌아다니는 곳 -->
+  <section id="scr-home" class="screen">
+    <div id="homeField"><div id="homeDeco"></div><div id="homeMons"></div></div>
+    <div class="hud home-hud">
+      <button class="btn small" id="btnHomeBack">◀ 홈</button>
+      <div class="hud-title" id="homeTitle"></div>
+      <div class="home-pager" id="homePager">
+        <button class="btn small" id="homePrev" aria-label="앞 쪽">◀</button>
+        <span id="homePage">1 / 1</span>
+        <button class="btn small" id="homeNext" aria-label="다음 쪽">▶</button>
+      </div>
+    </div>
+    <div class="hint" id="homeHint"></div>
   </section>
 
   <!-- 창 -->
