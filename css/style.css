@@ -288,7 +288,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .home-hud .btn, .home-pager { flex: none; white-space: nowrap; }
 .home-pager { display: flex; align-items: center; gap: 0.4rem; background: #fffc; border: 0.15rem solid var(--ink); border-radius: 1rem; padding: 0.15rem 0.4rem; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .home-pager .btn.small { padding: 0.2rem 0.6rem; }
-.home-pager .btn:disabled { opacity: .35; }
+.home-pager .btn:disabled, #btnRun:disabled { opacity: .35; }
 #homeHint:empty { display: none; }
 @media (orientation: portrait) { .home-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
