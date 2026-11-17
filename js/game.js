@@ -420,6 +420,7 @@
 
     function start(gold) {
       clearTimers();
+      $('btnRun').disabled = false;
       var mon = chooseMon(gold);
       SAVE.data.stats.lastMon = mon.id;
       SAVE.data.stats.battles++;
@@ -572,6 +573,9 @@
     }
     function throwBall() {
       B.phase = 'catching';
+      // 던지는 순간 바로 저장: 공이 흔들리는 동안 나가거나 앱을 닫아도 잡은 기록이 남음
+      B.isNew = SAVE.catchMon(B.mon.id, region);
+      $('btnRun').disabled = true; // 흔들리는 동안 나가기 잠깐 막기 (축하 장면까지 보기)
       $('actions').innerHTML = '';
       setBubble('가라, 몬스터볼!', '', '');
       var tb = $('throwBall');
@@ -586,8 +590,9 @@
     }
     function caught() {
       var mon = B.mon;
-      var isNew = SAVE.catchMon(mon.id, region);
+      var isNew = B.isNew;
       B.phase = 'done';
+      $('btnRun').disabled = false;
       $('throwBall').className = 'throw-ball done';
       SFX.play('caught');
       var stars = ['⭐', '✨', '🌟', '⭐', '✨', '🌟', '⭐', '✨'];
